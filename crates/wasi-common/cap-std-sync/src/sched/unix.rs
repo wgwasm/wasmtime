@@ -8,6 +8,47 @@ pub async fn poll_oneoff<'a>(poll: &mut Poll<'a>) -> Result<(), Error> {
     if poll.is_empty() {
         return Ok(());
     }
+
+    let mut pollfds = Vec::new();
+
+    poll.rw_subscriptions().for_each(|s| match s {
+        Subscription::Read(f) | Subscription::Write(f) => {
+            pollfds.push(f.file.readable_boxed());
+        }
+        Subscription::MonotonicClock { .. } => unreachable!(),
+    });
+
+    let (result, index, _) =
+        futures::executor::block_on(futures::future::select_all(pollfds.into_iter()));
+
+    let (nbytes, subscription) = match poll
+        .rw_subscriptions()
+        .enumerate()
+        .find(|(i, _)| i.eq(&index))
+        .map(|(_, x)| x)
+        .unwrap()
+    {
+        Subscription::Read(sub) => (sub.file.num_ready_bytes().await?, sub),
+        Subscription::Write(sub) => (0, sub),
+        _ => unreachable!(),
+    };
+
+    match result {
+        Ok(_) => {
+            subscription.complete(nbytes, RwEventFlags::empty());
+        }
+        Err(_) => {
+            subscription.error(Error::io());
+        }
+    }
+
+    Ok(())
+}
+
+pub async fn poll_oneoff_x<'a>(poll: &mut Poll<'a>) -> Result<(), Error> {
+    if poll.is_empty() {
+        return Ok(());
+    }
     let mut pollfds = Vec::new();
     for s in poll.rw_subscriptions() {
         match s {

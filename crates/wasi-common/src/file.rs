@@ -113,6 +113,12 @@ pub trait WasiFile: Send + Sync {
         Ok(0)
     }
 
+    fn readable_boxed(
+        &self,
+    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = std::io::Result<()>> + Send>> {
+        unimplemented!()
+    }
+
     async fn readable(&self) -> Result<(), Error> {
         Err(Error::badf())
     }

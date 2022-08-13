@@ -184,6 +184,7 @@ impl TryFrom<std::io::Error> for types::Errno {
                 std::io::ErrorKind::PermissionDenied => Ok(types::Errno::Perm),
                 std::io::ErrorKind::AlreadyExists => Ok(types::Errno::Exist),
                 std::io::ErrorKind::InvalidInput => Ok(types::Errno::Ilseq),
+                std::io::ErrorKind::WouldBlock => Ok(types::Errno::Again),
                 _ => Err(anyhow::anyhow!(err).context(format!("Unknown OS error"))),
             },
         }
